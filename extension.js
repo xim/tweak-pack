@@ -422,8 +422,9 @@ export default class XimsTweakPack extends Extension {
                     (skipMaxH && actor.meta_window.maximized_horizontally) ||
                     (skipMaxV && actor.meta_window.maximized_vertically) ||
                     (skipSticky && actor.meta_window.is_on_all_workspaces()) ||
-                    (!filterIsAllowlist && filterList.includes(wmClass)) ||
-                    (filterIsAllowlist && filterList.length > 0 && !filterList.includes(wmClass));
+                    (filterIsAllowlist
+                        ? !filterList.includes(wmClass)
+                        : filterList.includes(wmClass));
 
                 if (isFocused || isExcluded)
                     applyStyle(actor, 255, 0.0, 0.0);
