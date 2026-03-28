@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist>
+  <schema id="org.gnome.shell.extensions.xims-tweak-pack" path="/org/gnome/shell/extensions/xims-tweak-pack/">
+
+    <!-- Panel toggles -->
+    <key name="clock-move-right" type="b">
+      <default>true</default>
+      <summary>Move clock to the right</summary>
+      <description>Extend the panel left box so the clock sits right of it</description>
+    </key>
+    <key name="notification-position-right" type="b">
+      <default>true</default>
+      <summary>Notifications to the right</summary>
+      <description>Move notification banners to the right side of the screen</description>
+    </key>
+    <key name="grayscale-tray-icons" type="b">
+      <default>true</default>
+      <summary>Grayscale tray icons</summary>
+      <description>Desaturate all items in the panel right box (indicators, system menu, etc.)</description>
+    </key>
+    <key name="window-title-in-panel" type="b">
+      <default>true</default>
+      <summary>Window title in panel</summary>
+      <description>Show the focused window title in the top panel</description>
+    </key>
+
+    <!-- Style inactive windows: main toggle -->
+    <key name="style-inactive-windows" type="b">
+      <default>false</default>
+      <summary>Style inactive windows</summary>
+      <description>Apply visual effects to unfocused windows</description>
+    </key>
+
+    <!-- Style inactive windows: style -->
+    <key name="diw-inactive-transparency" type="i">
+      <default>0</default>
+      <range min="0" max="100"/>
+      <summary>Inactive window transparency %</summary>
+    </key>
+    <key name="diw-inactive-darkness" type="i">
+      <default>0</default>
+      <range min="0" max="100"/>
+      <summary>Inactive window darkness %</summary>
+    </key>
+    <key name="diw-inactive-desaturation" type="i">
+      <default>65</default>
+      <range min="0" max="100"/>
+      <summary>Inactive window desaturation %</summary>
+    </key>
+
+    <!-- Style inactive windows: exemptions -->
+    <key name="diw-skip-always-on-top" type="b">
+      <default>false</default>
+      <summary>Skip always-on-top windows</summary>
+    </key>
+    <key name="diw-skip-fullscreen" type="b">
+      <default>false</default>
+      <summary>Skip fullscreen windows</summary>
+    </key>
+    <key name="diw-skip-maximized-horizontal" type="b">
+      <default>false</default>
+      <summary>Skip horizontally maximized windows</summary>
+    </key>
+    <key name="diw-skip-maximized-vertical" type="b">
+      <default>false</default>
+      <summary>Skip vertically maximized windows</summary>
+    </key>
+    <key name="diw-skip-sticky" type="b">
+      <default>false</default>
+      <summary>Skip sticky windows</summary>
+    </key>
+
+    <!-- Style inactive windows: per-app filtering -->
+    <key name="diw-filter-is-allowlist" type="b">
+      <default>false</default>
+      <summary>Filter mode is allowlist</summary>
+      <description>When true the app list is an allowlist; when false it is a denylist</description>
+    </key>
+    <key name="diw-filter-app-list" type="as">
+      <default>[]</default>
+      <summary>Filter app list</summary>
+      <description>List of WM_CLASS strings to filter</description>
+    </key>
+
+  </schema>
+</schemalist>
