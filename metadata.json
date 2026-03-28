@@ -2,7 +2,7 @@
   "name": "xim's tweak pack",
   "description": "Five panel and window tweaks in one place: move clock right, move notifications right, grayscale tray icons, window title in panel, style inactive windows. Inspired by Unite (hardpixel), Notification Banner Position (Bruno Drugowick), Desaturated Tray Icons (cr1337), and Focus on Active Window (Hwaryong).",
   "uuid": "xims-tweak-pack@xim",
-  "shell-version": ["46", "47", "48", "49"],
+  "shell-version": ["46", "48"],
   "settings-schema": "org.gnome.shell.extensions.xims-tweak-pack",
   "url": "https://github.com/xim/tweak-pack"
 }
