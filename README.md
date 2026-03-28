@@ -1,4 +1,4 @@
-# xim's tweak pack
+# ![favicon.png](favicon.png) xim's tweak pack
 
 A small collection of tweaks in one GNOME Shell extension.
 
@@ -6,6 +6,9 @@ Born from frustration with abandonware, bloated extensions and extension incompa
 single, reasonably-maintained extension that gave me exactly the features I wanted. So I shamelessly
 ripped off a few extensions, added some of my own tweaks, and bundled it all together.
 
+![always-on-top-and-desat-ansi.png](screenshots/always-on-top-and-desat-ansi.png)
+
+![settings-and-desat-ansi.png](screenshots/settings-and-desat-ansi.png)
 
 ## Features
 
