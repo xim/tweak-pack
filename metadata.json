@@ -4,5 +4,6 @@
   "uuid": "xims-tweak-pack@xim",
   "shell-version": ["46", "48"],
   "settings-schema": "org.gnome.shell.extensions.xims-tweak-pack",
-  "url": "https://github.com/xim/tweak-pack"
+  "url": "https://github.com/xim/tweak-pack",
+  "version": 1
 }
