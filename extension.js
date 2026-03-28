@@ -120,16 +120,13 @@ export default class XimsTweakPack extends Extension {
 
     GetCurrentWindowClasses() {
         const classes = new Set();
-        for (const actor of global.window_group.get_children()) {
-            const metaWin = actor.meta_window;
-            if (!metaWin)
-                continue;
-            const type = metaWin.get_window_type();
+        for (const actor of global.get_window_actors()) {
+            const type = actor.meta_window.get_window_type();
             if (type !== Meta.WindowType.NORMAL &&
                 type !== Meta.WindowType.DIALOG &&
                 type !== Meta.WindowType.MODAL_DIALOG)
                 continue;
-            const wmClass = metaWin.get_wm_class();
+            const wmClass = actor.meta_window.get_wm_class();
             if (wmClass)
                 classes.add(wmClass);
         }
@@ -409,26 +406,22 @@ export default class XimsTweakPack extends Extension {
         function updateAllWindows() {
             const focusWindow = global.display.focus_window;
 
-            for (const actor of global.window_group.get_children()) {
-                const metaWin = actor.meta_window;
-                if (!metaWin)
-                    continue;
-
-                const type = metaWin.get_window_type();
+            for (const actor of global.get_window_actors()) {
+                const type = actor.meta_window.get_window_type();
                 if (type !== Meta.WindowType.NORMAL &&
                     type !== Meta.WindowType.DIALOG &&
                     type !== Meta.WindowType.MODAL_DIALOG)
                     continue;
 
-                const wmClass = metaWin.get_wm_class();
-                const isFocused = focusWindow && metaWin === focusWindow;
+                const wmClass = actor.meta_window.get_wm_class();
+                const isFocused = focusWindow && actor.meta_window === focusWindow;
 
                 const isExcluded =
-                    (skipAbove && metaWin.is_above()) ||
-                    (skipFullscreen && metaWin.is_fullscreen()) ||
-                    (skipMaxH && metaWin.maximized_horizontally) ||
-                    (skipMaxV && metaWin.maximized_vertically) ||
-                    (skipSticky && metaWin.is_on_all_workspaces()) ||
+                    (skipAbove && actor.meta_window.is_above()) ||
+                    (skipFullscreen && actor.meta_window.is_fullscreen()) ||
+                    (skipMaxH && actor.meta_window.maximized_horizontally) ||
+                    (skipMaxV && actor.meta_window.maximized_vertically) ||
+                    (skipSticky && actor.meta_window.is_on_all_workspaces()) ||
                     (!filterIsAllowlist && filterList.includes(wmClass)) ||
                     (filterIsAllowlist && filterList.length > 0 && !filterList.includes(wmClass));
 
@@ -440,9 +433,7 @@ export default class XimsTweakPack extends Extension {
         }
 
         function resetAllWindows() {
-            for (const actor of global.window_group.get_children()) {
-                if (!actor.meta_window)
-                    continue;
+            for (const actor of global.get_window_actors()) {
                 actor.opacity = 255;
                 const b = actor.get_effect('xim-brightness');
                 if (b) actor.remove_effect(b);
