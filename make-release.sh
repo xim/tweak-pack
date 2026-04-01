@@ -8,7 +8,7 @@ out="${uuid}-v${version}.zip"
 glib-compile-schemas schemas/
 
 rm -f "$out"
-zip "$out" extension.js prefs.js metadata.json schemas/* >&2
+zip "$out" extension.js prefs.js metadata.json schemas/*.xml >&2
 
 echo >&2 "Created $out"
 echo "$out"
