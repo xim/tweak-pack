@@ -70,6 +70,13 @@
       <summary>Skip sticky windows</summary>
     </key>
 
+    <!-- Style inactive windows: compositor workaround -->
+    <key name="diw-suspend-unredirect" type="b">
+      <default>true</default>
+      <summary>Suspend unredirection (direct scanout) for fullscreen/maximized windows</summary>
+      <description>When a window covers an entire monitor with nothing on top, mutter bypasses the compositor and effects do not apply. With this toggle enabled, that optimization is suspended whenever a styled window is fullscreen or fully maximized. May increase GPU usage while such windows are styled and visible.</description>
+    </key>
+
     <!-- Style inactive windows: per-app filtering -->
     <key name="diw-filter-is-allowlist" type="b">
       <default>false</default>

@@ -83,7 +83,14 @@ export default class XimsTweakPackPreferences extends ExtensionPreferences {
         group.add(darknessRow);
         settings.bind('diw-inactive-darkness', darknessRow, 'value', Gio.SettingsBindFlags.DEFAULT);
 
-        return [group, desatRow, transparencyRow, darknessRow];
+        const unredirectRow = new Adw.SwitchRow({
+            title: 'Suspend unredirection (direct scanout) for fullscreen windows',
+            subtitle: 'Fixes rendering on fullscreen windows. May increase GPU usage while such windows are styled and visible.',
+        });
+        group.add(unredirectRow);
+        settings.bind('diw-suspend-unredirect', unredirectRow, 'active', Gio.SettingsBindFlags.DEFAULT);
+
+        return [group, desatRow, transparencyRow, darknessRow, unredirectRow];
     }
 
     _buildExemptGroup(settings) {

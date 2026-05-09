@@ -359,9 +359,11 @@ export default class XimsTweakPack extends Extension {
         let focusSignalId = null;
         let windowCreatedId = null;
         let settingsSignalId = null;
+        let unredirectAllowed = true;
         let targetOpacity, targetBrightness, targetDesatFactor;
         let filterIsAllowlist, filterList;
         let skipAbove, skipFullscreen, skipMaxH, skipMaxV, skipSticky;
+        let suspendUnredirect;
 
         function loadSettings() {
             targetOpacity = Math.round(((100 - settings.get_int('diw-inactive-transparency')) / 100) * 255);
@@ -375,6 +377,7 @@ export default class XimsTweakPack extends Extension {
             skipMaxH = settings.get_boolean('diw-skip-maximized-horizontal');
             skipMaxV = settings.get_boolean('diw-skip-maximized-vertical');
             skipSticky = settings.get_boolean('diw-skip-sticky');
+            suspendUnredirect = settings.get_boolean('diw-suspend-unredirect');
         }
 
         function applyStyle(actor, opacity, brightness, desatFactor) {
@@ -403,8 +406,20 @@ export default class XimsTweakPack extends Extension {
             }
         }
 
+        function setUnredirectAllowed(allow) {
+            if (allow !== unredirectAllowed) {
+                if (allow)
+                    Meta.enable_unredirect_for_display(global.display);
+                else
+                    Meta.disable_unredirect_for_display(global.display);
+                unredirectAllowed = allow;
+            }
+        }
+
         function updateAllWindows() {
             const focusWindow = global.display.focus_window;
+            const styledWindows = [];
+            let allowUnredirect = true;
 
             for (const actor of global.get_window_actors()) {
                 const type = actor.meta_window.get_window_type();
@@ -426,10 +441,23 @@ export default class XimsTweakPack extends Extension {
                         ? !filterList.includes(wmClass)
                         : filterList.includes(wmClass));
 
-                if (isFocused || isExcluded)
-                    applyStyle(actor, 255, 0.0, 0.0);
-                else
+                const willStyle = !isFocused && !isExcluded;
+                styledWindows.push({actor, willStyle});
+
+                if (suspendUnredirect && willStyle &&
+                    (actor.meta_window.is_fullscreen() ||
+                     (actor.meta_window.maximized_horizontally &&
+                      actor.meta_window.maximized_vertically)))
+                    allowUnredirect = false;
+            }
+
+            setUnredirectAllowed(allowUnredirect);
+
+            for (const {actor, willStyle} of styledWindows) {
+                if (willStyle)
                     applyStyle(actor, targetOpacity, targetBrightness, targetDesatFactor);
+                else
+                    applyStyle(actor, 255, 0.0, 0.0);
             }
         }
 
@@ -486,6 +514,8 @@ export default class XimsTweakPack extends Extension {
                     settings.disconnect(settingsSignalId);
                     settingsSignalId = null;
                 }
+
+                setUnredirectAllowed(true);
 
                 resetAllWindows();
             },
