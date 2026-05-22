@@ -436,12 +436,23 @@ export default class XimsTweakPack extends Extension {
         }
 
         function setUnredirectAllowed(allow) {
-            if (allow !== unredirectAllowed) {
+            if (allow === unredirectAllowed)
+                return;
+            unredirectAllowed = allow;
+
+            // API changed at some time after Gnome 46, so check for both APIs
+            const compositor = global.display.get_compositor?.();
+            if (compositor?.enable_unredirect) { // Old API
                 if (allow)
-                    Meta.enable_unredirect_for_display(global.display);
+                    compositor.enable_unredirect();
                 else
+                    compositor.disable_unredirect();
+            } else { // Newer API
+                if (allow) {
+                    Meta.enable_unredirect_for_display(global.display);
+                } else {
                     Meta.disable_unredirect_for_display(global.display);
-                unredirectAllowed = allow;
+                }
             }
         }
 
