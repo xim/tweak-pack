@@ -5,6 +5,7 @@
 // Active Window (Hwaryong).
 
 import Clutter from 'gi://Clutter';
+import Cogl from 'gi://Cogl';
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import GObject from 'gi://GObject';
@@ -16,6 +17,33 @@ import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
 import {AppMenu} from 'resource:///org/gnome/shell/ui/appMenu.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
+
+
+// Mixes each pixel toward Rec.709 RMS grayscale.
+const DesaturateEffect = GObject.registerClass({
+    GTypeName: 'XimDesaturateEffect',
+}, class DesaturateEffect extends Shell.GLSLEffect {
+    _init(factor = 1.0) {
+        super._init();
+        this.setFactor(factor);
+    }
+
+    setFactor(value) {
+        this._factor = value;
+        this.set_uniform_float(this.get_uniform_location('factor'), 1, [value]);
+        this.queue_repaint();
+    }
+
+    vfunc_build_pipeline() {
+        this.add_glsl_snippet(Cogl.SnippetHook.FRAGMENT,
+            'uniform float factor;',
+            `float g = sqrt(dot(cogl_color_out.rgb * cogl_color_out.rgb,
+                                vec3(0.2126, 0.7152, 0.0722)));
+             cogl_color_out.rgb = mix(cogl_color_out.rgb, vec3(g),
+                                      clamp(factor, 0.0, 1.0));`,
+            false);
+    }
+});
 
 
 const DBUS_IFACE = `<node>
@@ -219,7 +247,7 @@ export default class XimsTweakPack extends Extension {
 
         function addEffect(child) {
             if (!child.get_effect('xim-grayscale'))
-                child.add_effect_with_name('xim-grayscale', new Clutter.DesaturateEffect());
+                child.add_effect_with_name('xim-grayscale', new DesaturateEffect());
         }
 
         function removeEffect(child) {
@@ -397,10 +425,11 @@ export default class XimsTweakPack extends Extension {
             let dEffect = actor.get_effect('xim-desaturate');
             if (desatFactor > 0.0) {
                 if (!dEffect) {
-                    dEffect = new Clutter.DesaturateEffect();
+                    dEffect = new DesaturateEffect(desatFactor);
                     actor.add_effect_with_name('xim-desaturate', dEffect);
+                } else {
+                    dEffect.setFactor(desatFactor);
                 }
-                dEffect.set_factor(desatFactor);
             } else if (dEffect) {
                 actor.remove_effect(dEffect);
             }
