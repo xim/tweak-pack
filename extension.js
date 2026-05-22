@@ -5,6 +5,7 @@
 // Active Window (Hwaryong).
 
 import Clutter from 'gi://Clutter';
+import Cogl from 'gi://Cogl';
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import GObject from 'gi://GObject';
@@ -23,42 +24,24 @@ const DesaturateEffect = GObject.registerClass({
     GTypeName: 'XimDesaturateEffect',
 }, class DesaturateEffect extends Shell.GLSLEffect {
     _init(factor = 1.0) {
-        log(`xim-tweak-pack: DesaturateEffect _init factor=${factor}`);
-        let buildCalled = false;
-        this._buildSeen = () => { buildCalled = true; };
         super._init();
-        log(`xim-tweak-pack: after super._init, build_pipeline ran=${buildCalled}`);
-        const loc = this.get_uniform_location('factor');
-        log(`xim-tweak-pack: get_uniform_location('factor')=${loc}`);
-        this._factorLoc = loc;
         this.setFactor(factor);
     }
 
     setFactor(value) {
         this._factor = value;
-        const loc = this._factorLoc ?? this.get_uniform_location('factor');
-        log(`xim-tweak-pack: setFactor(${value}) loc=${loc}`);
-        try {
-            this.set_uniform_float(loc, 1, [value]);
-            log('xim-tweak-pack: set_uniform_float OK');
-        } catch (e) {
-            log(`xim-tweak-pack: set_uniform_float threw ${e}`);
-        }
+        this.set_uniform_float(this.get_uniform_location('factor'), 1, [value]);
         this.queue_repaint();
     }
 
     vfunc_build_pipeline() {
-        log('xim-tweak-pack: vfunc_build_pipeline called');
-        if (this._buildSeen)
-            this._buildSeen();
-        this.add_glsl_snippet(Shell.SnippetHook.FRAGMENT,
+        this.add_glsl_snippet(Cogl.SnippetHook.FRAGMENT,
             'uniform float factor;',
             `float g = sqrt(dot(cogl_color_out.rgb * cogl_color_out.rgb,
                                 vec3(0.2126, 0.7152, 0.0722)));
              cogl_color_out.rgb = mix(cogl_color_out.rgb, vec3(g),
                                       clamp(factor, 0.0, 1.0));`,
             false);
-        log('xim-tweak-pack: add_glsl_snippet returned');
     }
 });
 
@@ -264,7 +247,7 @@ export default class XimsTweakPack extends Extension {
 
         function addEffect(child) {
             if (!child.get_effect('xim-grayscale'))
-                child.add_effect_with_name('xim-grayscale', new DesaturateEffect(1.0));
+                child.add_effect_with_name('xim-grayscale', new DesaturateEffect());
         }
 
         function removeEffect(child) {
