@@ -28,12 +28,15 @@ All features are independently toggleable in the preferences UI.
    - Optional exclusion for fullscreen, always-on-top, maximized, and sticky windows
    - Per-app filtering (allowlist/denylist)
 
+Desaturation effects are implemented as shader fragments, and calculate Rec.709 RMS values to get perfect
+grayscale results. The extra processing power required is negligible on modern hardware, and the results
+are much better than the built-in "desaturate" effect in Clutter.
 
 ## Installation
 
 ### From extensions.gnome.org
 
-TODO will submit to extensions.gnome.org
+Published at https://extensions.gnome.org/extension/9623/xims-tweak-pack/
 
 ### Manual
 
