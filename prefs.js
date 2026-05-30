@@ -170,7 +170,7 @@ export default class XimsTweakPackPreferences extends ExtensionPreferences {
             null,
             'org.gnome.Shell',
             '/org/gnome/shell/extensions/XimsTweakPack',
-            'org.gnome.shell.extensions.XimsTweakPack',
+            'org.gnome.Shell.Extensions.XimsTweakPack',
             null,
         );
 

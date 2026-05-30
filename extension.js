@@ -47,7 +47,7 @@ const DesaturateEffect = GObject.registerClass({
 
 
 const DBUS_IFACE = `<node>
-  <interface name="org.gnome.shell.extensions.XimsTweakPack">
+  <interface name="org.gnome.Shell.Extensions.XimsTweakPack">
     <method name="GetCurrentWindowClasses">
       <arg type="as" direction="out" name="classes"/>
     </method>
@@ -89,11 +89,11 @@ class WindowTitleButton extends PanelMenu.Button {
         this.container.visible = visible;
     }
 
-    _onDestroy() {
+    destroy() {
         Main.panel.menuManager.removeMenu(this.menu);
         this.menu.setApp(null);
         this.setMenu(null);
-        super._onDestroy();
+        super.destroy();
     }
 });
 
@@ -101,7 +101,6 @@ class WindowTitleButton extends PanelMenu.Button {
 export default class XimsTweakPack extends Extension {
     enable() {
         this._settings = this.getSettings();
-        this._signalIds = [];
         this._features = {};
 
         this._exportDbus();
@@ -111,20 +110,17 @@ export default class XimsTweakPack extends Extension {
             if (this._settings.get_boolean(key))
                 feature.enable();
 
-            const id = this._settings.connect(`changed::${key}`, () => {
+            this._settings.connectObject(`changed::${key}`, () => {
                 if (this._settings.get_boolean(key))
                     feature.enable();
                 else
                     feature.disable();
-            });
-            this._signalIds.push(id);
+            }, this);
         }
     }
 
     disable() {
-        for (const id of this._signalIds)
-            this._settings.disconnect(id);
-        this._signalIds = [];
+        this._settings.disconnectObject(this);
 
         for (const feature of Object.values(this._features))
             feature.disable();
@@ -243,8 +239,6 @@ export default class XimsTweakPack extends Extension {
 
     // Grayscale Tray Icons
     _grayscaleTray() {
-        let childAddedId = null;
-
         function addEffect(child) {
             if (!child.get_effect('xim-grayscale'))
                 child.add_effect_with_name('xim-grayscale', new DesaturateEffect());
@@ -265,18 +259,15 @@ export default class XimsTweakPack extends Extension {
                 for (const child of Main.panel._rightBox.get_children())
                     addEffect(child);
 
-                childAddedId = Main.panel._rightBox.connect('child-added', (_box, child) => {
-                    addEffect(child);
-                });
+                Main.panel._rightBox.connectObject(
+                    'child-added', (_box, child) => addEffect(child),
+                    this);
             },
             disable() {
                 if (!this._active) return;
                 this._active = false;
 
-                if (childAddedId !== null) {
-                    Main.panel._rightBox.disconnect(childAddedId);
-                    childAddedId = null;
-                }
+                Main.panel._rightBox.disconnectObject(this);
 
                 for (const child of Main.panel._rightBox.get_children())
                     removeEffect(child);
@@ -288,20 +279,15 @@ export default class XimsTweakPack extends Extension {
 
     _windowTitle() {
         let button = null;
-        let focusWindowSignalId = null;
-        let overviewShowingId = null;
-        let overviewHidingId = null;
         let focusedWindow = null;
-        let titleNotifyId = null;
+        const tracker = {};
 
         function syncTitle() {
             if (Main.sessionMode.isLocked)
                 return;
 
-            if (titleNotifyId && focusedWindow) {
-                focusedWindow.disconnect(titleNotifyId);
-                titleNotifyId = null;
-            }
+            if (focusedWindow)
+                focusedWindow.disconnectObject(tracker);
 
             focusedWindow = global.display.focus_window;
 
@@ -317,11 +303,11 @@ export default class XimsTweakPack extends Extension {
                 button.setReactive(true);
                 button.setVisible(!Main.overview.visibleTarget);
 
-                titleNotifyId = focusedWindow.connect('notify::title', () => {
+                focusedWindow.connectObject('notify::title', () => {
                     const t = focusedWindow.get_title();
                     if (t)
                         button.setTitle(t.replace(/\r?\n|\r/g, ' '));
-                });
+                }, tracker);
             } else {
                 button.setReactive(false);
                 button.setVisible(false);
@@ -345,9 +331,12 @@ export default class XimsTweakPack extends Extension {
                 button = new WindowTitleButton();
                 Main.panel.addToStatusArea('xim-window-title', button, 1, 'left');
 
-                focusWindowSignalId = global.display.connect('notify::focus-window', syncTitle);
-                overviewShowingId = Main.overview.connect('showing', syncVisibility);
-                overviewHidingId = Main.overview.connect('hiding', syncVisibility);
+                global.display.connectObject(
+                    'notify::focus-window', syncTitle, tracker);
+                Main.overview.connectObject(
+                    'showing', syncVisibility,
+                    'hiding', syncVisibility,
+                    tracker);
 
                 syncTitle();
             },
@@ -355,22 +344,10 @@ export default class XimsTweakPack extends Extension {
                 if (!this._active) return;
                 this._active = false;
 
-                if (focusWindowSignalId) {
-                    global.display.disconnect(focusWindowSignalId);
-                    focusWindowSignalId = null;
-                }
-                if (overviewShowingId) {
-                    Main.overview.disconnect(overviewShowingId);
-                    overviewShowingId = null;
-                }
-                if (overviewHidingId) {
-                    Main.overview.disconnect(overviewHidingId);
-                    overviewHidingId = null;
-                }
-                if (titleNotifyId && focusedWindow) {
-                    focusedWindow.disconnect(titleNotifyId);
-                    titleNotifyId = null;
-                }
+                global.display.disconnectObject(tracker);
+                Main.overview.disconnectObject(tracker);
+                if (focusedWindow)
+                    focusedWindow.disconnectObject(tracker);
                 focusedWindow = null;
 
                 if (button) {
@@ -384,9 +361,7 @@ export default class XimsTweakPack extends Extension {
     // Style Inactive Windows
     _styleInactive() {
         const settings = this._settings;
-        let focusSignalId = null;
-        let windowCreatedId = null;
-        let settingsSignalId = null;
+        const tracker = {};
         let unredirectAllowed = true;
         let targetOpacity, targetBrightness, targetDesatFactor;
         let filterIsAllowlist, filterList;
@@ -519,22 +494,22 @@ export default class XimsTweakPack extends Extension {
 
                 loadSettings();
 
-                focusSignalId = global.display.connect(
-                    'notify::focus-window', updateAllWindows);
-                windowCreatedId = global.display.connect(
+                global.display.connectObject(
+                    'notify::focus-window', updateAllWindows,
                     'window-created', (_display, metaWin) => {
                         const type = metaWin.get_window_type();
                         if (type === Meta.WindowType.NORMAL ||
                             type === Meta.WindowType.DIALOG ||
                             type === Meta.WindowType.MODAL_DIALOG)
                             updateAllWindows();
-                    });
-                settingsSignalId = settings.connect('changed', (_s, key) => {
+                    },
+                    tracker);
+                settings.connectObject('changed', (_s, key) => {
                     if (key.startsWith('diw-')) {
                         loadSettings();
                         updateAllWindows();
                     }
-                });
+                }, tracker);
 
                 updateAllWindows();
             },
@@ -542,18 +517,8 @@ export default class XimsTweakPack extends Extension {
                 if (!this._active) return;
                 this._active = false;
 
-                if (focusSignalId) {
-                    global.display.disconnect(focusSignalId);
-                    focusSignalId = null;
-                }
-                if (windowCreatedId) {
-                    global.display.disconnect(windowCreatedId);
-                    windowCreatedId = null;
-                }
-                if (settingsSignalId) {
-                    settings.disconnect(settingsSignalId);
-                    settingsSignalId = null;
-                }
+                global.display.disconnectObject(tracker);
+                settings.disconnectObject(tracker);
 
                 setUnredirectAllowed(true);
 
