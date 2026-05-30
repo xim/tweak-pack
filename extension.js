@@ -17,6 +17,8 @@ import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
 import {AppMenu} from 'resource:///org/gnome/shell/ui/appMenu.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
+import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
+import {WindowMenu} from 'resource:///org/gnome/shell/ui/windowMenu.js';
 
 
 // Mixes each pixel toward Rec.709 RMS grayscale.
@@ -55,6 +57,82 @@ const DBUS_IFACE = `<node>
 </node>`;
 
 
+// AppMenu containing
+// 1. Titlebar right-click items (Take Screenshot, Always on Top, Close, etc.)
+// 2. Open Windows list (if 2+ windows)
+// 3. AppMenu items (New Window, Quit, etc.)
+class WindowAppMenu extends AppMenu {
+    constructor(sourceActor) {
+        super(sourceActor);
+
+        // AppMenu internals like  `_openWindowsHeader` and `_newWindowItem`
+        // are created in AppMenu's constructor. I wanted to make three separate
+        // headers, and thus hardcode the "Application" header's position to be
+        // right bofore the "New Window" item. If these internals (or ordering)
+        // changes, stuff will break / look ugly...
+        this._winMenuHeader = new PopupMenu.PopupSeparatorMenuItem('Window');
+        this.addMenuItem(this._winMenuHeader, 0);
+        this._winMenuSection = new PopupMenu.PopupMenuSection();
+        this.addMenuItem(this._winMenuSection, 1);
+
+        this._appMenuHeader = new PopupMenu.PopupSeparatorMenuItem('Application');
+        this.addMenuItem(this._appMenuHeader,
+            this._getMenuItems().indexOf(this._newWindowItem));
+
+        // Default theme shrinks the *first* child's label leading to
+        // inconsistent header sizing, so hardcode a style.
+        const headerStyle = 'font-weight: 700; font-size: 1em;';
+        this._winMenuHeader.label.style = headerStyle;
+        this._openWindowsHeader.label.style = headerStyle;
+        this._appMenuHeader.label.style = headerStyle;
+    }
+
+    open(animate) {
+        this._rebuildWindowSection();
+        this._indentItems();
+        super.open(animate);
+    }
+
+    _rebuildWindowSection() {
+        this._winMenuSection.removeAll();
+
+        // Read the focused window directly. We run before super.open() takes
+        // the modal grab, so focus_window is still the real window here (the
+        // grab momentarily clears it, which is what the syncTitle guard is
+        // for).
+        const window = global.display.focus_window;
+        this._winMenuHeader.visible = !!window;
+        if (!window)
+            return;
+
+        WindowMenu.prototype._buildMenu.call(this._winMenuSection, window);
+    }
+
+    // indent all items and separator lines so they align, including space
+    // sufficient for checkboxes on the lest. AppMenu builds its own items, and
+    // we just hack them into the right shape.
+    _indentItems() {
+        const headers = [
+            this._winMenuHeader, this._openWindowsHeader, this._appMenuHeader,
+        ];
+        const indent = items => {
+            for (const item of items) {
+                if (item instanceof PopupMenu.PopupMenuSection) {
+                    indent(item._getMenuItems()); // recurse for sections
+                } else if (headers.includes(item)) {
+                    // section titles stay non-indented
+                } else if (item instanceof PopupMenu.PopupBaseMenuItem &&
+                           item._ornament === PopupMenu.Ornament.HIDDEN) {
+                    // Add "Ornament" space to items to indent them
+                    item.setOrnament(PopupMenu.Ornament.NONE);
+                }
+            }
+        };
+        indent(this._getMenuItems());
+    }
+}
+
+
 const WindowTitleButton = GObject.registerClass(
 class WindowTitleButton extends PanelMenu.Button {
     _init() {
@@ -66,7 +144,7 @@ class WindowTitleButton extends PanelMenu.Button {
         this.bind_property('reactive', this, 'can-focus', 0);
         this.reactive = false;
 
-        const menu = new AppMenu(this);
+        const menu = new WindowAppMenu(this);
         this.setMenu(menu);
         Main.panel.menuManager.addMenu(menu);
 
@@ -286,6 +364,12 @@ export default class XimsTweakPack extends Extension {
             if (Main.sessionMode.isLocked)
                 return;
 
+            // Menu takes a modal grab, which moves focus to the menu. If that's
+            // open, don't update the title or focus right now, or things go ...
+            // weird. =)
+            if (button?.menu.isOpen)
+                return;
+
             if (focusedWindow)
                 focusedWindow.disconnectObject(tracker);
 
@@ -316,6 +400,9 @@ export default class XimsTweakPack extends Extension {
         }
 
         function syncVisibility() {
+            if (button?.menu.isOpen)
+                return;
+
             if (!focusedWindow)
                 button.setVisible(false);
             else
