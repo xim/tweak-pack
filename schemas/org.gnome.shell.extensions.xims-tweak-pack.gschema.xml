@@ -1,5 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <schemalist>
+
+  <enum id="org.gnome.shell.extensions.xims-tweak-pack.window-title-menu-mode">
+    <value value="0" nick="application"/>
+    <value value="1" nick="both"/>
+    <value value="2" nick="both-no-open-windows"/>
+    <value value="3" nick="window"/>
+  </enum>
+
   <schema id="org.gnome.shell.extensions.xims-tweak-pack" path="/org/gnome/shell/extensions/xims-tweak-pack/">
 
     <!-- Panel toggles -->
@@ -22,6 +30,11 @@
       <default>true</default>
       <summary>Window title in panel</summary>
       <description>Show the focused window title in the top panel</description>
+    </key>
+    <key name="window-title-menu-mode" enum="org.gnome.shell.extensions.xims-tweak-pack.window-title-menu-mode">
+      <default>"both-no-open-windows"</default>
+      <summary>Window title menu contents</summary>
+      <description>What the panel title button's menu shows</description>
     </key>
 
     <!-- Style inactive windows: main toggle -->

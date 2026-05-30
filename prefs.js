@@ -46,6 +46,23 @@ export default class XimsTweakPackPreferences extends ExtensionPreferences {
         group.add(titleRow);
         settings.bind('window-title-in-panel', titleRow, 'active', Gio.SettingsBindFlags.DEFAULT);
 
+        // ComboRow order must match gschema enum; implicit map index<->nick.
+        const menuModeRow = new Adw.ComboRow({
+            title: 'Menu contents',
+            subtitle: 'What the title button menu shows',
+            model: Gtk.StringList.new([
+                'Application only',
+                'Both',
+                'Both, no window list',
+                'Window only',
+            ]),
+        });
+        group.add(menuModeRow);
+        menuModeRow.selected = settings.get_enum('window-title-menu-mode');
+        menuModeRow.connect('notify::selected',
+            () => settings.set_enum('window-title-menu-mode', menuModeRow.selected));
+        settings.bind('window-title-in-panel', menuModeRow, 'sensitive', Gio.SettingsBindFlags.GET);
+
         return group;
     }
 

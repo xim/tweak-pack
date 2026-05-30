@@ -57,13 +57,44 @@ const DBUS_IFACE = `<node>
 </node>`;
 
 
+// A plain popup that shows only the focused window's titlebar items, built
+// from GNOME's own WindowMenu so it stays identical to the real titlebar menu.
+class WindowOnlyMenu extends PopupMenu.PopupMenu {
+    constructor(sourceActor) {
+        super(sourceActor, 0.5, St.Side.TOP);
+    }
+
+    // Match the native titlebar menu: reserve ornament space on every item so
+    // labels align and the "Always on Top" check sits flush (windowMenu.js
+    // does the same in its own addAction override).
+    addAction(label, callback) {
+        const item = super.addAction(label, callback);
+        item.setOrnament(PopupMenu.Ornament.NONE);
+        return item;
+    }
+
+    open(animate) {
+        // Rebuild against the current window each open (items capture per-
+        // window state). We run before super.open() takes the modal grab, so
+        // focus_window is still the real window here.
+        this.removeAll();
+        const window = global.display.focus_window;
+        if (window)
+            WindowMenu.prototype._buildMenu.call(this, window);
+        super.open(animate);
+    }
+}
+
+
 // AppMenu containing
 // 1. Titlebar right-click items (Take Screenshot, Always on Top, Close, etc.)
 // 2. Open Windows list (if 2+ windows)
 // 3. AppMenu items (New Window, Quit, etc.)
 class WindowAppMenu extends AppMenu {
-    constructor(sourceActor) {
+    constructor(sourceActor, showOpenWindows = true) {
         super(sourceActor);
+
+        this._showOpenWindows = showOpenWindows;
 
         // AppMenu internals like  `_openWindowsHeader` and `_newWindowItem`
         // are created in AppMenu's constructor. I wanted to make three separate
@@ -91,6 +122,15 @@ class WindowAppMenu extends AppMenu {
         this._rebuildWindowSection();
         this._indentItems();
         super.open(animate);
+    }
+
+    // Suppress AppMenu's "Open Windows" list on !_showOpenWindows
+    _updateWindowsSection() {
+        if (this._showOpenWindows) {
+            super._updateWindowsSection();
+        } else {
+            this._openWindowsHeader.hide();
+        }
     }
 
     _rebuildWindowSection() {
@@ -133,10 +173,26 @@ class WindowAppMenu extends AppMenu {
 }
 
 
+function createTitleMenu(mode, sourceActor) {
+    switch (mode) {
+    case 'window':
+        return new WindowOnlyMenu(sourceActor);
+    case 'application':
+        return new AppMenu(sourceActor);
+    case 'both-no-open-windows':
+        return new WindowAppMenu(sourceActor, false);
+    default: // 'both'
+        return new WindowAppMenu(sourceActor, true);
+    }
+}
+
+
 const WindowTitleButton = GObject.registerClass(
 class WindowTitleButton extends PanelMenu.Button {
-    _init() {
+    _init(mode) {
         super._init(0.0, null, true);
+
+        this._app = null;
 
         this._label = new St.Label({y_align: Clutter.ActorAlign.CENTER});
         this.add_child(this._label);
@@ -144,7 +200,7 @@ class WindowTitleButton extends PanelMenu.Button {
         this.bind_property('reactive', this, 'can-focus', 0);
         this.reactive = false;
 
-        const menu = new WindowAppMenu(this);
+        const menu = createTitleMenu(mode, this);
         this.setMenu(menu);
         Main.panel.menuManager.addMenu(menu);
 
@@ -156,7 +212,14 @@ class WindowTitleButton extends PanelMenu.Button {
     }
 
     setApp(app) {
-        this.menu.setApp(app);
+        // WindowOnlyMenu has no setApp; only AppMenu-based menus track an app.
+        this._app = app;
+        this.menu.setApp?.(app);
+    }
+
+    setMode(mode) {
+        this.setMenu(createTitleMenu(mode, this));
+        this.menu.setApp?.(this._app);
     }
 
     setReactive(reactive) {
@@ -169,7 +232,7 @@ class WindowTitleButton extends PanelMenu.Button {
 
     destroy() {
         Main.panel.menuManager.removeMenu(this.menu);
-        this.menu.setApp(null);
+        this.menu.setApp?.(null);
         this.setMenu(null);
         super.destroy();
     }
@@ -356,6 +419,7 @@ export default class XimsTweakPack extends Extension {
     // Window Title in Panel
 
     _windowTitle() {
+        const settings = this._settings;
         let button = null;
         let focusedWindow = null;
         const tracker = {};
@@ -415,7 +479,7 @@ export default class XimsTweakPack extends Extension {
                 if (this._active) return;
                 this._active = true;
 
-                button = new WindowTitleButton();
+                button = new WindowTitleButton(settings.get_string('window-title-menu-mode'));
                 Main.panel.addToStatusArea('xim-window-title', button, 1, 'left');
 
                 global.display.connectObject(
@@ -423,6 +487,9 @@ export default class XimsTweakPack extends Extension {
                 Main.overview.connectObject(
                     'showing', syncVisibility,
                     'hiding', syncVisibility,
+                    tracker);
+                settings.connectObject('changed::window-title-menu-mode',
+                    () => button.setMode(settings.get_string('window-title-menu-mode')),
                     tracker);
 
                 syncTitle();
@@ -433,6 +500,7 @@ export default class XimsTweakPack extends Extension {
 
                 global.display.disconnectObject(tracker);
                 Main.overview.disconnectObject(tracker);
+                settings.disconnectObject(tracker);
                 if (focusedWindow)
                     focusedWindow.disconnectObject(tracker);
                 focusedWindow = null;
