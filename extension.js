@@ -57,6 +57,19 @@ const DBUS_IFACE = `<node>
 </node>`;
 
 
+// Best-effort translation gnome-shell/gtk, words like "Window" and
+// "Application" are translated already. So we get them "for free"
+const TEXT_DOMAINS = ['gnome-shell', 'gtk40', 'gtk30', 'gtk20'];
+function guessTranslation(msgid) {
+    for (const domain of TEXT_DOMAINS) {
+        const translated = GLib.dgettext(domain, msgid);
+        if (translated !== msgid)
+            return translated;
+    }
+    return msgid;
+}
+
+
 // A plain popup that shows only the focused window's titlebar items, built
 // from GNOME's own WindowMenu so it stays identical to the real titlebar menu.
 class WindowOnlyMenu extends PopupMenu.PopupMenu {
@@ -101,12 +114,14 @@ class WindowAppMenu extends AppMenu {
         // headers, and thus hardcode the "Application" header's position to be
         // right bofore the "New Window" item. If these internals (or ordering)
         // changes, stuff will break / look ugly...
-        this._winMenuHeader = new PopupMenu.PopupSeparatorMenuItem('Window');
+        this._winMenuHeader = new PopupMenu.PopupSeparatorMenuItem(
+            guessTranslation('Window'));
         this.addMenuItem(this._winMenuHeader, 0);
         this._winMenuSection = new PopupMenu.PopupMenuSection();
         this.addMenuItem(this._winMenuSection, 1);
 
-        this._appMenuHeader = new PopupMenu.PopupSeparatorMenuItem('Application');
+        this._appMenuHeader = new PopupMenu.PopupSeparatorMenuItem(
+            guessTranslation('Application'));
         this.addMenuItem(this._appMenuHeader,
             this._getMenuItems().indexOf(this._newWindowItem));
 
